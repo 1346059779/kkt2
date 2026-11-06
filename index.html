@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>KakaoTalk Chat</title>
+<style>
+  :root{
+    --kt-yellow:#ffe812;
+    --kt-yellow-dark:#f7d900;
+    --bg-page:#000;
+    --bg-chat:#1a1a1a;
+    --header-bg:rgba(20,20,20,.92);
+    --header-line:rgba(255,255,255,.08);
+    --in-bubble:#2b2b2b;
+    --in-text:#f2f2f2;
+    --out-bubble:#ffe812;
+    --out-text:#191919;
+    --time:#9a9a9a;
+    --sys:#8a8a8a;
+    --input-bg:#2c2c2c;
+    --input-text:#fff;
+    --panel-bg:#111;
+    --panel-text:#f0f0f0;
+    --radius:18px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:var(--bg-page);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic","PingFang SC","Microsoft YaHei",sans-serif;
+    color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;
+  }
+  button,input,textarea,select{font-family:inherit;}
+  ::-webkit-scrollbar{width:0;}
+
+  /* ===== 手机机身 ===== */
+  #phone{
+    position:relative;
+    width:100%;max-width:420px;
+    height:100%;max-height:100vh;
+    background:var(--bg-chat);
+    display:flex;flex-direction:column;
+    overflow:hidden;
+  }
+  @media (min-width:460px){
+    #phone{
+      height:min(100vh, 900px);
+      border-radius:44px;
+      box-shadow:0 0 0 10px #1c1c1e,0 0 0 12px #3a3a3c,0 30px 80px rgba(0,0,0,.6);
+    }
+  }
+
+  /* ===== 聊天背景 ===== */
+  #chatBg{
+    position:absolute;inset:0;
+    background-color:var(--bg-chat);
+    background-size:cover;background-position:center;
+    z-index:0;
+  }
+  #chatBg::after{
+    content:"";position:absolute;inset:0;
+    background:rgba(18,18,18,.72);
+  }
+
+  /* ===== 顶部聊天头 ===== */
+  #header{
+    position:relative;z-index:5;
+    display:flex;align-items:center;gap:10px;
+    padding:10px 8px 10px 10px;
+    background:var(--header-bg);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--header-line);
+    flex:0 0 auto;
+  }
+  .ic-btn{
+    width:36px;height:36px;border:0;background:transparent;
+    color:#fff;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;border-radius:50%;flex:0 0 auto;
+  }
+  .ic-btn:active{background:rgba(255,255,255,.12);}
+  #peerInfo{flex:1;min-width:0;display:flex;align-items:center;gap:9px;}
+  #peerAvatarWrap{position:relative;flex:0 0 auto;}
+  #peerAvatar{
+    width:38px;height:38px;border-radius:50%;object-fit:cover;display:block;
+    background:#444;
+  }
+  #peerName{
+    font-size:16px;font-weight:600;line-height:1.2;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  #peerStatus{font-size:11px;color:#b0b0b0;line-height:1.3;}
+
+  /* ===== 消息区 ===== */
+  #chat{position:relative;z-index:1;flex:1 1 auto;overflow-y:auto;padding:12px 10px 6px;}
+  .date-sep{text-align:center;margin:10px 0;font-size:12px;color:var(--sys);letter-spacing:.5px;}
+  .msg-row{display:flex;align-items:flex-end;gap:6px;margin:2px 0;animation:pop .22s cubic-bezier(.2,.9,.3,1.2);}
+  .msg-row.me{flex-direction:row-reverse;}
+  @keyframes pop{
+    0%{opacity:0;transform:translateY(8px) scale(.96);}
+    100%{opacity:1;transform:translateY(0) scale(1);}
+  }
+  .m-avatar{width:34px;height:34px;border-radius:50%;object-fit:cover;flex:0 0 auto;background:#444;}
+  .bubble-wrap{display:flex;flex-direction:column;max-width:74%;}
+  .msg-row.me .bubble-wrap{align-items:flex-end;}
+  .bubble{
+    position:relative;
+    padding:9px 12px;font-size:15.5px;line-height:1.42;
+    word-break:break-word;overflow-wrap:anywhere;
+    border-radius:var(--radius);
+  }
+  /* 对方气泡：左侧 + 尾巴 */
+  .msg-row.them .bubble{
+    background:var(--in-bubble);color:var(--in-text);
+    border-bottom-left-radius:6px;
+  }
+  /* 自己气泡：右侧黄色 + 尾巴 */
+  .msg-row.me .bubble{
+    background:var(--out-bubble);color:var(--out-text);
+    border-bottom-right-radius:6px;
+  }
+  .meta{display:flex;align-items:flex-end;gap:5px;margin:0 4px;flex:0 0 auto;padding-bottom:2px;}
+  .msg-row.me .meta{flex-direction:row-reverse;}
+  .time{font-size:10.5px;color:var(--time);white-space:nowrap;line-height:1;}
+  .read{font-size:10.5px;color:var(--kt-yellow);line-height:1;}
+
+  .sys-msg{text-align:center;margin:14px 0;font-size:12.5px;color:var(--sys);}
+
+  /* 正在输入 */
+  #typing{position:relative;z-index:1;flex:0 0 auto;padding:2px 12px 4px;height:24px;}
+  #typing span{display:none;font-size:12.5px;color:var(--time);}
+  #typing .dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:#cfcfcf;margin:0 1px;animation:blink 1.2s infinite;}
+  #typing .dot:nth-child(2){animation-delay:.2s}
+  #typing .dot:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,60%,100%{opacity:.25}30%{opacity:1}}
+
+  /* ===== 输入栏 ===== */
+  #composer{
+    position:relative;z-index:5;
+    display:flex;align-items:flex-end;gap:6px;
+    padding:7px 8px calc(7px + env(safe-area-inset-bottom));
+    background:var(--header-bg);
+    border-top:1px solid var(--header-line);
+    flex:0 0 auto;
+  }
+  #inputBox{
+    flex:1;min-height:38px;max-height:130px;
+    background:var(--input-bg);border-radius:20px;
+    padding:9px 14px;color:var(--input-text);font-size:15.5px;line-height:1.4;
+    outline:none;border:0;resize:none;overflow-y:auto;
+    display:flex;align-items:center;
+  }
+  #inputBox:empty:before{content:attr(data-placeholder);color:#9a9a9a;}
+  .send-btn{
+    flex:0 0 auto;height:38px;min-width:42px;padding:0 10px;
+    border:0;border-radius:20px;cursor:pointer;
+    background:var(--kt-yellow);color:#191919;font-weight:700;font-size:14px;
+    display:none;align-items:center;justify-content:center;
+  }
+  .send-btn.on{display:flex;}
+  .send-btn:active{background:var(--kt-yellow-dark);}
+  .plus-btn{
+    flex:0 0 auto;width:38px;height:38px;border:0;background:transparent;
+    color:#d0d0d0;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+
+  /* ===== 底部弹层 ===== */
+  .sheet{
+    position:absolute;inset:0;z-index:40;display:none;
+    background:rgba(0,0,0,.5);
+  }
+  .sheet.show{display:block;}
+  .sheet-body{
+    position:absolute;left:0;right:0;bottom:0;
+    background:#1c1c1e;color:#fff;
+    border-top-left-radius:16px;border-top-right-radius:16px;
+    max-height:78%;overflow-y:auto;
+    padding:14px 14px calc(14px + env(safe-area-inset-bottom));
+    animation:slideUp .24s ease;
+  }
+  @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .sheet-title{font-size:16px;font-weight:600;margin:0 0 12px;text-align:center;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:12.5px;color:#b0b0b0;margin-bottom:5px;}
+  .field input,.field textarea,.field select{
+    width:100%;background:#2c2c2e;color:#fff;border:1px solid #3a3a3c;
+    border-radius:10px;padding:10px 11px;font-size:14.5px;outline:none;
+  }
+  .field textarea{height:80px;resize:vertical;line-height:1.5;}
+  .row2{display:flex;gap:8px;}
+  .row2 .field{flex:1;}
+  .av-pick{display:flex;gap:8px;flex-wrap:wrap;}
+  .av-opt{
+    width:48px;height:48px;border-radius:50%;cursor:pointer;
+    border:2px solid transparent;background:#3a3a3c;object-fit:cover;padding:0;
+  }
+  .av-opt.on{border-color:var(--kt-yellow);}
+  .btn{
+    width:100%;padding:12px;border:0;border-radius:12px;cursor:pointer;
+    font-size:15px;font-weight:600;margin-top:8px;
+  }
+  .btn-primary{background:var(--kt-yellow);color:#191919;}
+  .btn-primary:active{background:var(--kt-yellow-dark);}
+  .btn-ghost{background:transparent;color:#fff;border:1px solid #3a3a3c;}
+  .btn-danger{background:#ff3b30;color:#fff;}
+  .btn:active{opacity:.85;}
+  .hint{font-size:11.5px;color:#9a9a9a;line-height:1.6;margin-top:4px;}
+  .kv-note{font-size:11.5px;color:#b0b0b0;background:#252527;border-radius:8px;padding:8px 10px;line-height:1.6;margin-top:6px;word-break:break-all;}
+
+  /* 联系人列表 */
+  .contact-item{
+    display:flex;align-items:center;gap:10px;
+    padding:10px;background:#2c2c2e;border-radius:12px;margin-bottom:8px;
+  }
+  .contact-item img{width:40px;height:40px;border-radius:50%;object-fit:cover;flex:0 0 auto;}
+  .contact-item .ci-name{flex:1;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ci-del{
+    background:transparent;border:0;color:#ff6b6b;font-size:13px;cursor:pointer;padding:4px 8px;
+  }
+  .empty-tip{text-align:center;color:#8a8a8a;font-size:13px;padding:20px 0;}
+
+  .toast{
+    position:absolute;left:50%;bottom:90px;transform:translateX(-50%);
+    z-index:60;background:rgba(0,0,0,.82);color:#fff;
+    padding:9px 16px;border-radius:20px;font-size:13.5px;
+    opacity:0;pointer-events:none;transition:opacity .25s;white-space:nowrap;
+  }
+  .toast.show{opacity:1;}
+  .section-title{
+    font-size:13px;color:#b0b0b0;margin:14px 0 8px;padding-top:8px;border-top:1px solid #2e2e30;
+  }
+</style>
+</head>
+<body>
+<div id="phone">
+  <div id="chatBg"></div>
+
+  <!-- 顶部 -->
+  <div id="header">
+    <button class="ic-btn" id="backBtn" title="返回">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+    <div id="peerInfo">
+      <div id="peerAvatarWrap">
+        <img id="peerAvatar" src="" alt="">
+      </div>
+      <div style="min-width:0">
+        <div id="peerName">김유림</div>
+        <div id="peerStatus">온라인</div>
+      </div>
+    </div>
+    <button class="ic-btn" id="searchBtn" title="搜索">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+    </button>
+    <button class="ic-btn" id="menuBtn" title="菜单">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+    </button>
+  </div>
+
+  <!-- 消息 -->
+  <div id="chat">
+    <div class="date-sep" id="dateSep"></div>
+    <div class="sys-msg" id="sysMsg"></div>
+  </div>
+
+  <!-- 正在输入 -->
+  <div id="typing"><span id="typingText">입력 중…<i class="dot"></i><i class="dot"></i><i class="dot"></i></span></div>
+
+  <!-- 输入栏 -->
+  <div id="composer">
+    <button class="plus-btn" id="plusBtn" title="更多">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    </button>
+    <div id="inputBox" contenteditable="true" data-placeholder="多条消息用 |||| 分隔"></div>
+    <button class="send-btn" id="sendBtn">전송</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- ===== 设置面板 ===== -->
+  <div class="sheet" id="settingsSheet">
+    <div class="sheet-body">
+      <p class="sheet-title">设置</p>
+
+      <div class="field">
+        <label>对方昵称</label>
+        <input type="text" id="fPeerName" placeholder="例如 김유림">
+      </div>
+      <div class="field">
+        <label>在线状态文字</label>
+        <input type="text" id="fPeerStatus" placeholder="例如 온라인">
+      </div>
+
+      <div class="field">
+        <label>对方头像（点选预设 / 可上传）</label>
+        <div class="av-pick" id="peerAvatars"></div>
+        <input type="file" id="peerFile" accept="image/*" style="display:none">
+        <button class="btn btn-ghost" id="peerUpload" style="margin-top:8px">上传对方头像</button>
+      </div>
+
+      <div class="field">
+        <label>自己头像（点选预设 / 可上传）</label>
+        <div class="av-pick" id="myAvatars"></div>
+        <input type="file" id="myFile" accept="image/*" style="display:none">
+        <button class="btn btn-ghost" id="myUpload" style="margin-top:8px">上传自己头像</button>
+      </div>
+
+      <div class="field">
+        <label>聊天背景</label>
+        <input type="text" id="fBgUrl" placeholder="填写网络图片链接，留空则用默认深色背景">
+        <button class="btn btn-ghost" id="bgUpload" style="margin-top:8px">上传本地背景图片</button>
+        <input type="file" id="bgFile" accept="image/*" style="display:none">
+        <button class="btn btn-ghost" id="bgReset" style="margin-top:8px">恢复默认背景</button>
+      </div>
+
+      <div class="section-title">对方主动发消息设置</div>
+      <div class="row2">
+        <div class="field">
+          <label>开启定时主动消息</label>
+          <select id="fAutoActive">
+            <option value="0">关闭</option>
+            <option value="1">开启</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>间隔（分钟）</label>
+          <input type="number" id="fAutoMin" min="1" max="60" value="5">
+        </div>
+      </div>
+
+      <div class="section-title">AI 人设（对方性格设定）</div>
+      <div class="field">
+        <textarea id="fPersona" placeholder="例如：你是김유림，温柔的年上男友，说话宠溺，喜欢用ㅋㅋㅋ和emoji，韩文回复。多条回复用||||分隔"></textarea>
+        <p class="hint">AI 会严格按照这段人设与你聊天；留空则使用默认温柔年上男友人设。想要AI一次发多条，输出内容用||||隔开。</p>
+      </div>
+
+      <div class="section-title">大模型 API（留空则自动使用本地模拟聊天）</div>
+      <div class="field">
+        <label>API 地址（OpenAI / DeepSeek 等兼容接口）</label>
+        <input type="text" id="fApiUrl" placeholder="https://api.deepseek.com/v1/chat/completions">
+      </div>
+      <div class="field">
+        <label>API Key</label>
+        <input type="password" id="fApiKey" placeholder="sk-...">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>模型名称</label>
+          <input type="text" id="fModel" placeholder="deepseek-chat">
+        </div>
+        <div class="field">
+          <label>上下文记忆轮数</label>
+          <input type="number" id="fMemory" min="0" max="30" value="8">
+        </div>
+      </div>
+      <p class="hint">支持 DeepSeek、GPT 及任何 OpenAI 兼容格式。保存后点击「测试连接」验证。</p>
+      <button class="btn btn-ghost" id="testApi">测试连接</button>
+      <div class="kv-note" id="apiNote"></div>
+
+      <div class="section-title">操作</div>
+      <button class="btn btn-primary" id="saveBtn">保存配置</button>
+      <button class="btn btn-ghost" id="clearBtn">清空聊天记录</button>
+      <button class="btn btn-danger" id="resetBtn">重置所有设置</button>
+      <button class="btn btn-ghost" id="closeSheet" style="margin-top:14px">关闭</button>
+    </div>
+  </div>
+
+  <!-- ===== 快捷联系人面板 ===== -->
+  <div class="sheet" id="contactsSheet">
+    <div class="sheet-body">
+      <p class="sheet-title">快捷联系人</p>
+      <div class="field">
+        <label>新增联系人</label>
+        <div class="row2">
+          <input type="text" id="newCName" placeholder="昵称">
+          <button class="btn btn-primary" id="addContact" style="margin-top:0;flex:0 0 auto;width:auto;padding:0 18px">添加</button>
+        </div>
+      </div>
+      <div id="contactList"></div>
+      <button class="btn btn-ghost" id="closeContacts" style="margin-top:14px">关闭</button>
+    </div>
+  </div>
+
+  <!-- ===== 更多菜单 ===== -->
+  <div class="sheet" id="menuSheet">
+    <div class="sheet-body">
+      <p class="sheet-title">更多</p>
+      <button class="btn btn-ghost" id="mTriggerPeer">🔔 让对方立刻主动发消息</button>
+      <button class="btn btn-ghost" id="mSaveSession">💾 保存会话到浏览器</button>
+      <button class="btn btn-ghost" id="mLoadSession">📂 加载上次会话</button>
+      <button class="btn btn-ghost" id="mContacts">快捷联系人</button>
+      <button class="btn btn-ghost" id="mTemplates">主动发送模板</button>
+      <button class="btn btn-ghost" id="mSettings">设置</button>
+      <button class="btn btn-ghost" id="closeMenu" style="margin-top:14px">取消</button>
+    </div>
+  </div>
+
+  <!-- ===== 模板面板 ===== -->
+  <div class="sheet" id="tplSheet">
+    <div class="sheet-body">
+      <p class="sheet-title">主动发送模板</p>
+      <p class="hint" style="text-align:center;margin-bottom:12px">点击即可以「对方」身份主动发出一条消息，多条用||||分隔</p>
+      <div id="tplList"></div>
+      <div class="field" style="margin-top:14px">
+        <label>自定义模板（多条用||||分隔）</label>
+        <input type="text" id="newTpl" placeholder="输入要主动发送的模板内容">
+        <button class="btn btn-primary" id="addTpl" style="margin-top:8px">添加模板</button>
+      </div>
+      <button class="btn btn-ghost" id="closeTpl" style="margin-top:14px">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var PRESET = ["https://api.dicebear.com/7.x/adventurer/svg?seed=K1","https://api.dicebear.com/7.x/adventurer/svg?seed=K2","https://api.dicebear.com/7.x/adventurer/svg?seed=K3","https://api.dicebear.com/7.x/adventurer/svg?seed=K4","https://api.dicebear.com/7.x/adventurer/svg?seed=K5","https://api.dicebear.com/7.x/adventurer/svg?seed=K6"];
+  var PRESET_M = ["https://api.dicebear.com/7.x/avataaars/svg?seed=M1","https://api.dicebear.com/7.x/avataaars/svg?seed=M2","https://api.dicebear.com/7.x/avataaars/svg?seed=M3","https://api.dicebear.com/7.x/avataaars/svg?seed=M4","https://api.dicebear.com/7.x/avataaars/svg?seed=M5","https://api.dicebear.com/7.x/avataaars/svg?seed=M6"];
+
+  var DEFAULT_PERSONA = "你是김유림，一个温柔体贴的年上男友。你说话宠溺、会照顾人，喜欢用ㅋㅋㅋ、ㅠㅠ、emoji表达情绪，日常用韩文回复，偶尔夹几句中文撒娇。你有自己的脾气和小心思，会吃醋、会关心、会开玩笑，回答简短自然，像真人微信聊天，不要长篇大论，不要旁白和角色扮演说明。需要连续多条消息，就用||||分隔每一句。";
+
+  // 对方【主动发起消息】候选池（无API时兜底）
+  var INITIATE_POOL = [
+    "뭐 해? 생각나서 연락했어 😊",
+    "밥은 먹었어? ㅠㅠ",
+    "갑자기 보고 싶어졌어",
+    "오늘 뭐 재미있는 거 있었어?||||얘기해줘",
+    "잠깐 시간 돼? 이야기 하고 싶어",
+    "방금 너 생각하고 있었어 ㅋㅋㅋ",
+    "요즘 바빠? 연락 기다리고 있었어",
+    "날씨가 좋아서 너 생각 났다",
+    "혹시 심심해? 같이 얘기하자 🥺"
+  ];
+
+  var DEFAULT_TPL = [
+    "밥은 챙겨 먹었어? ㅠㅠ","보고 싶다... 오늘 하루 어땠어?","ㅋㅋㅋ 너 진짜 귀엽다","내일 시간 돼? 만나자 🥺","잘 자, 내 꿈에서 만나 😘"
+  ];
+
+  var SAMPLE_LOG = [
+    {s:"them",t:"요즘 연구실 분위기 어때? ㅋㅋㅋ"},
+    {s:"me",t:"아 그냥 그래... 너는?"},
+    {s:"them",t:"나도 ㅠㅠ 근데 오늘 넘 예쁜 짓 한다?"},
+    {s:"me",t:"무슨 말이야 ㅋㅋ"},
+    {s:"them",t:"그냥... 보고 싶어서 😌"}
+  ];
+
+  var state = {
+    peerName:"김유림",
+    peerStatus:"온라인",
+    peerAvatar:PRESET[0],
+    myAvatar:PRESET_M[0],
+    bgUrl:"",
+    persona:DEFAULT_PERSONA,
+    apiUrl:"",
+    apiKey:"",
+    model:"deepseek-chat",
+    memory:8,
+    contacts:[],
+    templates:DEFAULT_TPL.slice(),
+    log:[],
+    autoActive:0,
+    autoMin:5
+  };
+
+  var KEY = "kkt_chat_state_v1";
+  let autoTimer = null;
+
+  function loadState(){
+    try{
+      var s = localStorage.getItem(KEY);
+      if(s){ state = Object.assign(state, JSON.parse(s)); }
+    }catch(e){}
+    if(!state.peerName) state.peerName = "김유림";
+    if(!state.persona) state.persona = DEFAULT_PERSONA;
+    if(!Array.isArray(state.templates) || !state.templates.length) state.templates = DEFAULT_TPL.slice();
+    if(!Array.isArray(state.log)) state.log = [];
+    if(state.autoActive === undefined) state.autoActive = 0;
+    if(state.autoMin === undefined) state.autoMin =5;
+  }
+  function saveState(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+  // 保存完整会话（全部聊天+全部配置）
+  function saveFullSession(){
+    localStorage.setItem("kkt_full_session", JSON.stringify(state));
+    toastMsg("✅会话已保存到浏览器本地");
+  }
+  // 加载完整会话
+  function loadFullSession(){
+    var raw = localStorage.getItem("kkt_full_session");
+    if(!raw){ toastMsg("⚠️没有找到已保存会话"); return; }
+    try{
+      state = JSON.parse(raw);
+      renderHeader(); renderBg(); renderLog(); restartAutoTimer();
+      toastMsg("✅会话加载完成");
+    }catch(e){
+      toastMsg("❌会话读取失败");
+    }
+  }
+
+  /* ---------- DOM ---------- */
+  var $ = function(id){ return document.getElementById(id); };
+  var chat = $("chat"), bg = $("chatBg"), toast = $("toast"), typingText = $("typingText");
+
+  function toastMsg(m){
+    toast.textContent = m; toast.classList.add("show");
+    clearTimeout(toast._t); toast._t = setTimeout(function(){ toast.classList.remove("show"); }, 1800);
+  }
+
+  function fmtTime(d){
+    var h = d.getHours(), m = d.getMinutes();
+    var ap = h < 12 ? "오전" : "오후";
+    var hh = h % 12; if(hh === 0) hh = 12;
+    return ap + " " + hh + ":" + (m < 10 ? "0" + m : m);
+  }
+  function todayStr(){
+    var d = new Date(), w = ["일","월","화","수","목","금","토"][d.getDay()];
+    return (d.getMonth()+1) + "월 " + d.getDate() + "일 " + w + "요일";
+  }
+
+  function scrollBottom(){
+    requestAnimationFrame(function(){ chat.scrollTop = chat.scrollHeight; });
+  }
+
+  function renderBg(){
+    if(state.bgUrl){ bg.style.backgroundImage = "url(" + JSON.stringify(state.bgUrl).slice(1,-1) + ")"; }
+    else { bg.style.backgroundImage = ""; }
+  }
+  function renderHeader(){
+    $("peerName").textContent = state.peerName;
+    $("peerStatus").textContent = state.peerStatus || "온라인";
+    $("peerAvatar").src = state.peerAvatar;
+    $("sysMsg").textContent = state.peerName + "님과의 채팅방";
+    $("dateSep").textContent = todayStr();
+  }
+
+  function addMsg(side, text, save){
+    var d = new Date();
+    var row = document.createElement("div");
+    row.className = "msg-row " + (side === "me" ? "me" : "them");
+    var av = document.createElement("img");
+    av.className = "m-avatar";
+    av.src = side === "me" ? state.myAvatar : state.peerAvatar;
+    var wrap = document.createElement("div");
+    wrap.className = "bubble-wrap";
+    var b = document.createElement("div");
+    b.className = "bubble";
+    b.textContent = text;
+    wrap.appendChild(b);
+    row.appendChild(av);
+    if(side === "me"){
+      var meta = document.createElement("div");
+      meta.className = "meta";
+      var tm = document.createElement("span");
+      tm.className = "time"; tm.textContent = fmtTime(d);
+      var rd = document.createElement("span");
+      rd.className = "read"; rd.textContent = "읽음";
+      meta.appendChild(rd); meta.appendChild(tm);
+      row.appendChild(wrap); row.appendChild(meta);
+    } else {
+      row.appendChild(wrap);
+    }
+    chat.appendChild(row);
+    if(side === "me") scrollBottom();
+    else setTimeout(scrollBottom, 60);
+    if(save !== false){
+      state.log.push({s:side, t:text, ts:d.getTime()});
+      trimLog(); saveState();
+    }
+  }
+
+  function trimLog(){
+    var m = Math.max(0, parseInt(state.memory, 10) || 0);
+    if(m > 0 && state.log.length > m * 2 + 30){
+      state.log = state.log.slice(state.log.length - (m * 2 + 30));
+    }
+  }
+
+  function setTyping(on, label){
+    $("typing").style.display = on ? "block" : "none";
+    typingText.childNodes[0].nodeValue = (label || "입력 중") + "…";
+    if(on) scrollBottom();
+  }
+
+  // 解析||||，多条消息延时输出
+  function outputMultiThem(rawText){
+    var parts = rawText.split("||||").map(s=>s.trim()).filter(s=>s);
+    let delayAcc = 0;
+    parts.forEach((msg, idx)=>{
+      setTimeout(()=>{
+        if(idx ===0) setTyping(true, state.peerName + "님이 입력 중");
+        setTimeout(()=>{
+          setTyping(false);
+          addMsg("them", msg);
+        },450 + Math.min(1100, msg.length*22));
+      }, delayAcc);
+      delayAcc +=700;
+    });
+  }
+
+  // ===== 核心：对方主动发消息（优先调用DeepSeek，失败回退本地池子）=====
+  async function triggerPeerInitiate(){
+    const url = (state.apiUrl||"").trim();
+    const key = (state.apiKey||"").trim();
+    if(url && key){
+      setTyping(true, state.peerName + "님이 입력 중");
+      try{
+        const messages = [
+          {role:"system", content: state.persona || DEFAULT_PERSONA},
+          {role:"user", content:"现在请你主动发起聊天，作为恋人主动说一句话，不需要我提问，直接输出台词，如果有多句请用||||分割，不要多余解释。"}
+        ];
+        const resp = await fetch(url,{
+          method:"POST",
+          headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
+          body:JSON.stringify({model:state.model||"deepseek-chat", messages:messages, max_tokens:400})
+        });
+        if(!resp.ok) throw new Error("http err");
+        const d = await resp.json();
+        let reply = "";
+        if(d.choices&&d.choices[0]) reply = d.choices[0].message.content||"";
+        setTyping(false);
+        if(reply.trim()){
+          outputMultiThem(reply);
+          return;
+        }
+      }catch(e){
+        console.warn("主动生成API失败，回退本地",e);
+      }
+      setTyping(false);
+    }
+    //兜底本地候选
+    const raw = pick(INITIATE_POOL);
+    outputMultiThem(raw);
+  }
+
+  // 定时任务处理
+  function restartAutoTimer(){
+    if(autoTimer) clearInterval(autoTimer);
+    autoTimer = null;
+    if(state.autoActive ==1){
+      const ms = state.autoMin *60*1000;
+      autoTimer = setInterval(()=>{ triggerPeerInitiate(); }, ms);
+    }
+  }
+
+  /* ---------- 发送【支持||||多条我方消息】 ---------- */
+  var box = $("inputBox");
+  function sendMy(){
+    var t = (box.innerText || "").trim();
+    if(!t) return;
+    var msgs = t.split("||||");
+    box.innerText = "";
+    autoHeight();
+    $("sendBtn").classList.remove("on");
+
+    msgs.forEach((text, idx)=>{
+      const txt = text.trim();
+      if(!txt) return;
+      setTimeout(()=>{
+        addMsg("me", txt);
+        if(idx === msgs.length -1){
+          setTyping(true);
+          replyFromAI(txt);
+        }
+      }, idx * 420);
+    });
+  }
+
+  function autoHeight(){
+    box.style.height = "auto";
+    box.style.height = Math.min(130, box.scrollHeight) + "px";
+  }
+  box.addEventListener("input", function(){
+    autoHeight();
+    if((box.innerText || "").trim()) $("sendBtn").classList.add("on");
+    else $("sendBtn").classList.remove("on");
+  });
+  box.addEventListener("keydown", function(e){
+    if(e.key === "Enter" && !e.shiftKey && !e.isComposing){
+      e.preventDefault(); sendMy();
+    }
+  });
+  $("sendBtn").addEventListener("click", sendMy);
+
+  /* ---------- AI 回复 ---------- */
+  function buildContext(userText){
+    var m = Math.max(0, parseInt(state.memory, 10) || 0);
+    var recent = m > 0 ? state.log.slice(-m * 2) : [];
+    var msgs = [{role:"system", content:state.persona || DEFAULT_PERSONA}];
+    recent.forEach(function(x){
+      msgs.push({role: x.s === "me" ? "user" : "assistant", content: x.t});
+    });
+    msgs.push({role:"user", content:userText});
+    return msgs;
+  }
+
+  function replyFromAI(text){
+    var url = (state.apiUrl || "").trim();
+    if(!url){ localReply(text); return; }
+    var body = {model: state.model || "deepseek-chat", messages: buildContext(text)};
+    var init = {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)};
+    if(state.apiKey) init.headers["Authorization"] = "Bearer " + state.apiKey;
+    fetch(url, init).then(function(r){
+      if(!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    }).then(function(d){
+      var reply = "";
+      try{
+        if(d.choices && d.choices[0]){
+          reply = d.choices[0].message ? d.choices[0].message.content : d.choices[0].text;
+        }
+      }catch(e){}
+      if(!reply) reply = simulateReply(text);
+      finishAI(reply);
+    }).catch(function(err){
+      setTyping(false);
+      finishAI(simulateReply(text));
+      console.warn("API failed, fallback local:", err);
+    });
+  }
+
+  function finishAI(rawReply){
+    setTyping(false);
+    outputMultiThem(rawReply);
+  }
+
+  /* ---------- 本地模拟聊天库 ---------- */
+  function simulateReply(text){
+    var p = (state.persona || "").toLowerCase();
+    var name = state.peerName;
+    var t = (text || "").toLowerCase();
+    var map = [
+      [/안녕|하이|hi|hello|hi~|ㅎㅇ|嗨|你好/, ["안녕~ 잘 지냈어? ㅋㅋㅋ", "어? 생각나서 연락한 거야? 귀엽다 😊", "하이~ 나도 지금 너 생각 중이었어"]],
+      [/보고\s*싶|想念|miss/, ["나도 보고 싶다 ㅠㅠ 오늘은 특히 더", "그럼 내일 무조건 만나자, 약속!", "어떡해... 지금이라도 보고 싶은데 😣"]],
+      [/사랑해|爱你|좋아해/, ["...진짜? ㅠㅠ 나도 사랑해, 제일 많이", "이러면 나 오늘 일 못 해 ㅋㅋㅋ 심쿵이야", "사랑해这句话说一百遍도 듣고 싶다 💛"]],
+      [/밥|배고|吃|먹/, ["밥은 챙겨 먹었어? 안 챙기면 혼난다?", "오늘 점심 뭐 먹었어~ 사진 좀 보내봐", "나중에 맛있는 거 사줄게, 기대해 🍜"]],
+      [/잘자|잘\s*자|晚安|good ?night/, ["잘 자~ 오늘도 고생 많았어 🌙", "꿈에서 만나자, 약속! 😘", "자기 전에 물 한 잔 마시고 자, 알았지?"]],
+      [/안녕히\s*주무|굿?나잇/, ["굿나잇~ 방금 내 마음 떨렸다 ㅋㅋ", "좋은 꿈 꿔, 내일 아침에 바로 연락해", "잘 자... 아침에 깨워줄게"]],
+      [/화났|화이팅|加油|힘내/, ["힘내~ 넌 어차피 잘하는 애잖아", "내가 응원할게, 항상 곁에 있어", "화이팅!! 그 마음 알아주고 싶다 💪"]],
+      [/미안|sorry|对不起/, ["미안하다는 말은 빼~ 다 이해해", "진짜 괜찮아, 그러니까 웃어봐", "내가 더 잘할게, 같이 해결하자"]],
+      [/고마|谢谢|감사/, ["고마워 말고 그냥 더 자주 연락해 ㅋㅋ", "내가 있는 걸로 족하지? 🥰", "언제든 도와줄게, 그건 당연한 거야"]],
+      [/ㅋㅋ|ㅎㅎ|haha|哈哈|lol/, ["웃기지 마 ㅋㅋㅋ 나 지금 따라 웃고 있거든", "뭐가 재밌어? 말해봐 ㅋㅋ", "너 웃는 소리 진짜 좋아"]],
+      [/ㅠㅠ|ㅜㅜ|呜呜|슬프|울/, ["야, 울지 마 ㅠㅠ 내가 다 아프다", "눈물 닦아, 내가 안아줄게", "슬픈 일 있으면 다 말해, 내가 들어줄게"]],
+      [/언제|몇 시|何时|시간/, ["시간 된다면 당장이라도 보고 싶어", "내일은 무조건 비워둘게", "널 만날 시간은 항상 있어"]],
+      [/연락|답장|回复|왜 안/, ["바빠서 미쳤나 봐 ㅠㅠ 미안해", "지금 답장하면 됐지 ㅋㅋㅋ 보고 싶어서 그래", "연락 안 한 건 다 나 때문이야, 다음엔 더 빨리 할게"]],
+      [/사진|보내줘|照片|얼굴/, ["사진은? 귀엽게 좀 찍어서 보내", "지금은 못 보내... 아쉽 ㅋㅋ 나중에!", "사진보다 내가 직접 보고 싶다 😋"]],
+      [/귀여|可爱|cute/, ["너야말로 귀여워 ㅋㅋㅋ 어떡해", "그 말 들으려고 일부러 한 거야? 🥺", "내가 어디가 귀여워~ 어디? 말해봐"]],
+      [/졸|피곤|累|쉬/, ["피곤하면 좀 쉬어, 무리하지 말고", "오늘은 일찍 쉬자, 걱정되니까", "내가 마사지 해줄게... 상상이라도 ㅋㅋ"]],
+      [/무슨|뭐\s*해|在吗|뭐해/, ["널 생각하고 있었어 ㅋㅋㅋ", "그냥... 너 생각 중? ㅋㅋ", "바로 대답했으니까, 당연히 보고 있었지"]]
+    ];
+    for(var i=0;i<map.length;i++){
+      if(map[i][0].test(t)){
+        var arr = map[i][1];
+        return pick(arr);
+      }
+    }
+    var fallbacks = [
+      "어? 그랬구나 ㅋㅋㅋ 나 좀 더 얘기해봐",
+      "응, 알겠어~ 그런 하루였구나",
+      "ㅠㅠ 진짜? 그런 일이 있었어? 다 말해봐",
+      "너 말할 때마다 더 보고 싶어진다 ㅋㅋ",
+      "나도 그래, 우리 생각이 같나 봐",
+      "그래서? 다음엔 어떻게 할 거야~ 궁금해",
+      "오늘따라 목소리가 더 듣고 싶네 ㅋㅋ",
+      "응응, 계속 말해, 다 듣고 있어"
+    ];
+    return pick(fallbacks);
+  }
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+  /* ---------- 渲染历史 ---------- */
+  function renderLog(){
+    var nodes = chat.querySelectorAll(".msg-row");
+    for(var i=0;i<nodes.length;i++) nodes[i].remove();
+    if(!state.log.length){
+      SAMPLE_LOG.forEach(function(m){ addMsg(m.s, m.t, false); });
+    } else {
+      state.log.forEach(function(m){ addMsg(m.s, m.t, false); });
+    }
+    scrollBottom();
+  }
+
+  /* ---------- 弹层 ---------- */
+  function openSheet(id){ $(id).classList.add("show"); }
+  function closeSheet(id){ $(id).classList.remove("show"); }
+  function bindClose(id, btnId){
+    $(id).addEventListener("click", function(e){ if(e.target === this) closeSheet(id); });
+    $(btnId).addEventListener("click", function(){ closeSheet(id); });
+  }
+  bindClose("settingsSheet","closeSheet");
+  bindClose("contactsSheet","closeContacts");
+  bindClose("menuSheet","closeMenu");
+  bindClose("tplSheet","closeTpl");
+
+  $("menuBtn").addEventListener("click", function(){ openSheet("menuSheet"); });
+  $("plusBtn").addEventListener("click", function(){ openSheet("menuSheet"); });
+  $("backBtn").addEventListener("click", function(){ toastMsg("카카오톡 채팅방 나가기 기능은 PC에서만 가능합니다."); });
+  $("searchBtn").addEventListener("click", function(){ toastMsg("검색 기능은 데모에서는 지원하지 않습니다."); });
+
+  // 菜单：立刻触发对方主动发消息（现在优先调用DeepSeek）
+  $("mTriggerPeer").addEventListener("click",async function(){
+    closeSheet("menuSheet");
+    await triggerPeerInitiate();
+  });
+  // 保存、加载会话
+  $("mSaveSession").addEventListener("click",function(){
+    closeSheet("menuSheet");
+    saveFullSession();
+  });
+  $("mLoadSession").addEventListener("click",function(){
+    closeSheet("menuSheet");
+    loadFullSession();
+  });
+
+  /* ---------- 设置面板 ---------- */
+  function fillAvatars(boxId, preset, current, onPick){
+    var box = $(boxId);
+    box.innerHTML = "";
+    preset.forEach(function(u){
+      var b = document.createElement("img");
+      b.className = "av-opt" + (u === current ? " on" : "");
+      b.src = u;
+      b.addEventListener("click", function(){
+        box.querySelectorAll(".av-opt").forEach(function(x){ x.classList.remove("on"); });
+        b.classList.add("on"); onPick(u);
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function readFileAsDataURL(file, cb){
+    var r = new FileReader();
+    r.onload = function(e){ cb(e.target.result); };
+    r.readAsDataURL(file);
+  }
+
+  function openSheetSettings(){
+    $("fPeerName").value = state.peerName;
+    $("fPeerStatus").value = state.peerStatus;
+    $("fBgUrl").value = state.bgUrl;
+    $("fPersona").value = state.persona;
+    $("fApiUrl").value = state.apiUrl;
+    $("fApiKey").value = state.apiKey;
+    $("fModel").value = state.model;
+    $("fMemory").value = state.memory;
+    $("fAutoActive").value = String(state.autoActive);
+    $("fAutoMin").value = String(state.autoMin);
+    fillAvatars("peerAvatars", PRESET, state.peerAvatar, function(u){ state.peerAvatar = u; renderHeader(); saveState(); });
+    fillAvatars("myAvatars", PRESET_M, state.myAvatar, function(u){ state.myAvatar = u; saveState(); });
+    openSheet("settingsSheet");
+  }
+
+  $("mSettings").addEventListener("click", function(){ closeSheet("menuSheet"); openSheetSettings(); });
+
+  $("peerUpload").addEventListener("click", function(){ $("peerFile").click(); });
+  $("peerFile").addEventListener("change", function(e){
+    var f = e.target.files[0]; if(!f) return;
+    readFileAsDataURL(f, function(d){ state.peerAvatar = d; renderHeader(); fillAvatars("peerAvatars", PRESET, d, function(u){ state.peerAvatar=u;renderHeader();saveState();}); saveState(); });
+  });
+  $("myUpload").addEventListener("click", function(){ $("myFile").click(); });
+  $("myFile").addEventListener("change", function(e){
+    var f = e.target.files[0]; if(!f) return;
+    readFileAsDataURL(f, function(d){ state.myAvatar = d; fillAvatars("myAvatars", PRESET_M, d, function(u){state.myAvatar=u;saveState();}); saveState(); });
+  });
+  $("bgUpload").addEventListener("click", function(){ $("bgFile").click(); });
+  $("bgFile").addEventListener("change", function(e){
+    var f = e.target.files[0]; if(!f) return;
+    readFileAsDataURL(f, function(d){ state.bgUrl = d; $("fBgUrl").value = ""; renderBg(); saveState(); });
+  });
+  $("bgReset").addEventListener("click", function(){ state.bgUrl = ""; $("fBgUrl").value = ""; renderBg(); saveState(); toastMsg("已恢复默认背景"); });
+
+  $("saveBtn").addEventListener("click", function(){
+    state.peerName = $("fPeerName").value.trim() || "김유림";
+    state.peerStatus = $("fPeerStatus").value.trim() || "온라인";
+    var u = $("fBgUrl").value.trim();
+    if(u) state.bgUrl = u;
+    state.persona = $("fPersona").value.trim() || DEFAULT_PERSONA;
+    state.apiUrl = $("fApiUrl").value.trim();
+    state.apiKey = $("fApiKey").value.trim();
+    state.model = $("fModel").value.trim() || "deepseek-chat";
+    state.memory = Math.max(0, Math.min(30, parseInt($("fMemory").value, 10) || 8));
+    state.autoActive = parseInt($("fAutoActive").value);
+    state.autoMin = Math.max(1,Math.min(60,parseInt($("fAutoMin").value||5)));
+
+    renderHeader(); renderBg();
+    saveState();
+    restartAutoTimer();
+    closeSheet("settingsSheet");
+    toastMsg("配置已保存");
+  });
+
+  $("clearBtn").addEventListener("click", function(){
+    if(!confirm("确定要清空聊天记录吗？")) return;
+    state.log = []; saveState(); renderLog();
+    closeSheet("settingsSheet");
+    toastMsg("聊天记录已清空");
+  });
+
+  $("resetBtn").addEventListener("click", function(){
+    if(!confirm("确定重置所有设置？头像、背景、人设、API 配置都会恢复默认。")) return;
+    localStorage.removeItem(KEY);
+    localStorage.removeItem("kkt_full_session");
+    loadState();
+    renderHeader(); renderBg(); renderLog();
+    restartAutoTimer();
+    closeSheet("settingsSheet");
+    toastMsg("已重置所有设置");
+  });
+
+  $("testApi").addEventListener("click", function(){
+    var url = $("fApiUrl").value.trim();
+    var note = $("apiNote");
+    if(!url){ note.textContent = "请先填写 API 地址"; return; }
+    note.textContent = "正在测试连接...";
+    fetch(url, {
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization": "Bearer " + ($("fApiKey").value.trim() || "test")
+      },
+      body: JSON.stringify({model: $("fModel").value.trim() || "deepseek-chat", messages:[{role:"user",content:"hi"}], max_tokens:5})
+    }).then(function(r){
+      if(r.ok || r.status === 400 || r.status === 401){
+        note.textContent = "✅ 接口可达（状态 " + r.status + "）。保存后即可使用大模型。";
+      } else {
+        note.textContent = "⚠️ 返回状态 " + r.status + "，请检查地址与模型名。";
+      }
+    }).catch(function(e){
+      note.textContent = "❌ 无法连接：" + e.message + "（若不可访问，将自动使用本地模拟聊天）";
+    });
+  });
+
+  /* ---------- 联系人 ---------- */
+  function renderContacts(){
+    var box = $("contactList"); box.innerHTML = "";
+    if(!state.contacts.length){
+      var e = document.createElement("div"); e.className = "empty-tip";
+      e.textContent = "还没有联系人，添加后点击即可切换"; box.appendChild(e); return;
+    }
+    state.contacts.forEach(function(c, i){
+      var row = document.createElement("div"); row.className = "contact-item";
+      var img = document.createElement("img"); img.src = c.avatar;
+      var nm = document.createElement("div"); nm.className = "ci-name"; nm.textContent = c.name;
+      var sw = document.createElement("button"); sw.className = "ci-del"; sw.textContent = "切换";
+      sw.addEventListener("click", function(){
+        state.peerName = c.name; state.peerAvatar = c.avatar;
+        renderHeader(); saveState(); closeSheet("contactsSheet"); toastMsg("已切换到 " + c.name);
+      });
+      var dl = document.createElement("button"); dl.className = "ci-del"; dl.textContent = "删除";
+      dl.addEventListener("click", function(){
+        state.contacts.splice(i,1); saveState(); renderContacts();
+      });
+      row.appendChild(img); row.appendChild(nm); row.appendChild(sw); row.appendChild(dl);
+      box.appendChild(row);
+    });
+  }
+  $("mContacts").addEventListener("click", function(){ closeSheet("menuSheet"); renderContacts(); openSheet("contactsSheet"); });
+  $("addContact").addEventListener("click", function(){
+    var n = $("newCName").value.trim(); if(!n) return;
+    state.contacts.push({name:n, avatar:PRESET[state.contacts.length % PRESET.length]});
+    $("newCName").value = ""; saveState(); renderContacts();
+  });
+
+  /* ---------- 模板【支持||||多条主动消息】 ---------- */
+  function renderTemplates(){
+    var box = $("tplList"); box.innerHTML = "";
+    state.templates.forEach(function(t, i){
+      var b = document.createElement("button");
+      b.className = "btn btn-ghost"; b.textContent = t; b.style.textAlign = "left";
+      b.addEventListener("click", function(){
+        outputMultiThem(t);
+        closeSheet("tplSheet");
+      });
+      var del = document.createElement("button");
+      del.className = "btn btn-danger"; del.textContent = "删"; del.style.marginTop = "6px";
+      del.addEventListener("click", function(e){ e.stopPropagation(); state.templates.splice(i,1); saveState(); renderTemplates(); });
+      box.appendChild(b); box.appendChild(del);
+    });
+  }
+  $("mTemplates").addEventListener("click", function(){ closeSheet("menuSheet"); renderTemplates(); openSheet("tplSheet"); });
+  $("addTpl").addEventListener("click", function(){
+    var v = $("newTpl").value.trim(); if(!v) return;
+    state.templates.push(v); $("newTpl").value = ""; saveState(); renderTemplates();
+  });
+
+  /* ---------- 初始化 ---------- */
+  loadState();
+  renderHeader();
+  renderBg();
+  renderLog();
+  restartAutoTimer();
+
+  // 离线提示
+  if(!state.apiUrl && !navigator.onLine) toastMsg("当前离线，已启用本地模拟聊天");
+})();
+</script>
+</body>
+</html>
